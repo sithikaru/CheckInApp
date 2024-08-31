@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, firestore } from '../firebaseConfig';
 import { collection, doc, setDoc } from 'firebase/firestore';
 
@@ -13,23 +13,29 @@ const Login = ({ onLogin }) => {
   const [position, setPosition] = useState('');
   const [error, setError] = useState('');
   const [isSignup, setIsSignup] = useState(false);
-  const [loading, setLoading] = useState(false); // State to track loading
+  const [loading, setLoading] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false); // State for forgot password mode
 
   const companies = ['Company A', 'Company B', 'Company C'];
   const positions = ['Developer', 'Designer', 'Manager'];
 
   const handleLoginOrSignup = async () => {
     setError('');
-    setLoading(true); // Start loading
+    setLoading(true);
 
-    if (!email || !password || (isSignup && (!fullName || !company || !position))) {
+    if (!email || (!forgotPassword && !password) || (isSignup && (!fullName || !company || !position))) {
       setError('Please fill in all the required fields.');
-      setLoading(false); // Stop loading
+      setLoading(false);
       return;
     }
 
     try {
-      if (isSignup) {
+      if (forgotPassword) {
+        // Handle password reset
+        await sendPasswordResetEmail(auth, email);
+        setError('Password reset email sent!');
+        setForgotPassword(false); // Reset to login state after sending the email
+      } else if (isSignup) {
         // Sign up the user
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -45,11 +51,11 @@ const Login = ({ onLogin }) => {
           position,
         });
 
-        onLogin(); // Trigger the login success action
+        onLogin();
       } else {
         // Log in the user
         await signInWithEmailAndPassword(auth, email, password);
-        onLogin(); // Trigger the login success action
+        onLogin();
       }
     } catch (error) {
       switch (error.code) {
@@ -75,15 +81,15 @@ const Login = ({ onLogin }) => {
           setError('An unexpected error occurred. Please try again later.');
       }
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{isSignup ? 'Sign Up' : 'Login'}</Text>
+      <Text style={styles.title}>{forgotPassword ? 'Reset Password' : isSignup ? 'Sign Up' : 'Login'}</Text>
 
-      {isSignup && (
+      {isSignup && !forgotPassword && (
         <>
           <TextInput
             style={styles.input}
@@ -124,29 +130,49 @@ const Login = ({ onLogin }) => {
         autoCapitalize="none"
         placeholderTextColor="#9CACBA"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholderTextColor="#9CACBA"
-      />
+
+      {!forgotPassword && (
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholderTextColor="#9CACBA"
+        />
+      )}
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {loading ? (  // Show loading spinner if loading state is true
+      {loading ? (
         <ActivityIndicator size="large" color="#2094F3" />
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleLoginOrSignup}>
-          <Text style={styles.buttonText}>{isSignup ? 'Sign Up' : 'Log In'}</Text>
+          <Text style={styles.buttonText}>
+            {forgotPassword ? 'Reset Password' : isSignup ? 'Sign Up' : 'Log In'}
+          </Text>
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity onPress={() => setIsSignup(!isSignup)}>
-        <Text style={styles.toggleText}>
-          {isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-        </Text>
-      </TouchableOpacity>
+      {!forgotPassword && (
+        <>
+          <TouchableOpacity onPress={() => setIsSignup(!isSignup)}>
+            <Text style={styles.toggleText}>
+              {isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setForgotPassword(true)}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {forgotPassword && (
+        <TouchableOpacity onPress={() => setForgotPassword(false)}>
+          <Text style={styles.toggleText}>Back to Login</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -199,6 +225,11 @@ const styles = StyleSheet.create({
   toggleText: {
     color: '#2094F3',
     marginTop: 20,
+    textDecorationLine: 'underline',
+  },
+  forgotPasswordText: {
+    color: '#2094F3',
+    marginTop: 10,
     textDecorationLine: 'underline',
   },
 });
