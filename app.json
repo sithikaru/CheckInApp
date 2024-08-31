@@ -23,7 +23,12 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.zijja.CheckInApp"
+      "package": "com.zijja.CheckInApp",
+      "config":{
+        "googleMaps": {
+          "apiKey": "AIzaSyATHXiNxdGA2hsM3Q4mHj19SmJGLeIqRHY"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

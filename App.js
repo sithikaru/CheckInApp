@@ -37,30 +37,34 @@ const App = () => {
           return;
         }
 
-        let location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Highest,
-        });
-        setLocation(location);
+        try {
+          let location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+          setLocation(location);
 
-        let addressResponse = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        });
+          let addressResponse = await Location.reverseGeocodeAsync({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          });
 
-        if (addressResponse[0]) {
-          const { name, street, city, region } = addressResponse[0];
-          const formattedAddress = `${name ? name + ', ' : ''}${street ? street + ', ' : ''}${city}, ${region}`;
-          setAddress(formattedAddress);
-        } else {
-          setAddress('Unable to retrieve address');
+          if (addressResponse.length > 0) {
+            const { name, street, city, region } = addressResponse[0];
+            const formattedAddress = `${name ? name + ', ' : ''}${street ? street + ', ' : ''}${city ? city + ', ' : ''}${region}`;
+            setAddress(formattedAddress);
+          } else {
+            setAddress('Unable to retrieve address');
+          }
+        } catch (error) {
+          setErrorMsg('Error retrieving location or address');
         }
+
+        const intervalId = setInterval(() => {
+          setCurrentTime(new Date());
+        }, 1000);
+
+        return () => clearInterval(intervalId);
       })();
-
-      const intervalId = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 1000);
-
-      return () => clearInterval(intervalId);
     }
   }, [user]);
 
@@ -149,6 +153,9 @@ const App = () => {
             />
           </MapView>
         )}
+        {errorMsg && (
+          <Text style={styles.errorText}>{errorMsg}</Text>
+        )}
       </View>
       
       <View style={styles.footer}>
@@ -222,23 +229,10 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  mapControls: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-  },
-  mapButton: {
-    backgroundColor: '#1B2227',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderRadius: 8,
-  },
-  mapButtonText: {
-    color: 'white',
-    fontSize: 24,
+  errorText: {
+    color: 'red',
+    margin: 10,
+    textAlign: 'center',
   },
   footer: {
     padding: 20,
@@ -266,7 +260,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
-    
   },
   checkInText: {
     color: '#9CACBA',
