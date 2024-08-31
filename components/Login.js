@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { Picker } from '@react-native-picker/picker';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, firestore } from '../firebaseConfig';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc } from 'firebase/firestore';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -31,7 +31,17 @@ const Login = ({ onLogin }) => {
 
     try {
       if (forgotPassword) {
-        // Handle password reset
+        // Check if the email exists in Firestore
+        const userDocRef = doc(firestore, 'users', email);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+          setError('No user found with this email.');
+          setLoading(false);
+          return;
+        }
+
+        // If the email exists, send the password reset email
         await sendPasswordResetEmail(auth, email);
         setError('Password reset email sent!');
         setForgotPassword(false); // Reset to login state after sending the email
